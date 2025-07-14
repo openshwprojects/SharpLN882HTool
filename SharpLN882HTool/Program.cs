@@ -49,7 +49,7 @@ namespace LN882HTool
             {
                 LN882HFlasher f = new LN882HFlasher(port, 115200);
                 f.upload_ram_loader("LN882H_RAM_BIN.bin");
-                f.flash_info();
+              //  f.flash_info();
                 Console.WriteLine("Will do dump " + toRead + "...");
                 f.read_flash_to_file(toRead, readLen);
             }
@@ -57,7 +57,7 @@ namespace LN882HTool
             {
                 LN882HFlasher f = new LN882HFlasher(port, 115200);
                 f.upload_ram_loader("LN882H_RAM_BIN.bin");
-                f.flash_info();
+              //  f.flash_info();
                 Console.WriteLine("Will do flash erase all...");
                 f.flash_erase_all();
             }
@@ -65,7 +65,7 @@ namespace LN882HTool
             {
                 LN882HFlasher f = new LN882HFlasher(port, 115200);
                 f.upload_ram_loader("LN882H_RAM_BIN.bin");
-                f.flash_info();
+                //f.flash_info();
                 Console.WriteLine("Will do flash " + toWrite + "...");
                 f.flash_program(toWrite);
             }
