@@ -121,7 +121,7 @@ public class YModem
 
         while (true)
         {
-            Console.WriteLine("YModem::send: at " + data_stream.Position+"!");
+            Console.Write("Sending at " + data_stream.Position+"... ");
 
             int read = data_stream.Read(buffer, 0, packet_size);
             if (read == 0)
@@ -158,6 +158,7 @@ public class YModem
 
             sequence = (sequence + 1) % 0x100;
         }
+        Console.WriteLine("Done!");
         Console.WriteLine("YModem::send: sending loop done!");
 
         port.Write(new byte[] { EOT }, 0, 1);
