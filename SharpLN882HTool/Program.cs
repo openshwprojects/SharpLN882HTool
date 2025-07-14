@@ -50,8 +50,9 @@ namespace LN882HTool
                 LN882HFlasher f = new LN882HFlasher(port, 115200);
                 f.upload_ram_loader("LN882H_RAM_BIN.bin");
               //  f.flash_info();
-                Console.WriteLine("Will do dump " + toRead + "...");
+                Console.WriteLine("Will do dump " + toRead + " with len " + readLen+"...");
                 f.read_flash_to_file(toRead, readLen);
+                Console.WriteLine("Dump done!");
             }
             if(bErase)
             {
@@ -60,6 +61,7 @@ namespace LN882HTool
               //  f.flash_info();
                 Console.WriteLine("Will do flash erase all...");
                 f.flash_erase_all();
+                Console.WriteLine("Erase done!");
             }
             if (toWrite.Length > 0)
             {
@@ -68,6 +70,7 @@ namespace LN882HTool
                 //f.flash_info();
                 Console.WriteLine("Will do flash " + toWrite + "...");
                 f.flash_program(toWrite);
+                Console.WriteLine("Flash done!");
             }
         }
     }
@@ -75,7 +78,7 @@ namespace LN882HTool
     {
         private SerialPort _port;
 
-        public LN882HFlasher(string portName, int baudRate, int timeoutMs = 200)
+        public LN882HFlasher(string portName, int baudRate, int timeoutMs = 1000)
         {
             try
             {
@@ -212,16 +215,21 @@ namespace LN882HTool
 
         public void flash_program(string filename)
         {
+            Console.WriteLine("flash_program: will flash " + filename);
             change_baudrate(921600);
+            Console.WriteLine("flash_program: sending startaddr");
             _port.Write("startaddr 0x0\r\n");
             Console.WriteLine(_port.ReadLine().Trim());
             Console.WriteLine(_port.ReadLine().Trim());
 
+            Console.WriteLine("flash_program: sending update command");
             _port.Write("upgrade\r\n");
             _port.Read(new byte[7], 0, 7);
 
+            Console.WriteLine("flash_program: sending file via ymodem");
             YModem modem = new YModem(_port);
             modem.send_file(filename, true, 3);
+            Console.WriteLine("flash_program: sending file done");
 
             _port.Write("filecount\r\n");
             Console.WriteLine(_port.ReadLine().Trim());
@@ -278,6 +286,7 @@ namespace LN882HTool
 
         public bool read_flash(int flash_addr, bool is_otp, out byte[] flash_data)
         {
+            Console.WriteLine("read_flash[" + flash_addr + "] entered");
             string cmd = is_otp ? $"flash_otp_read 0x{flash_addr:X} 0x100\r\n" : $"flash_read 0x{flash_addr:X} 0x100\r\n";
             _port.Write(cmd);
 
@@ -287,7 +296,8 @@ namespace LN882HTool
             string hexData = dataLine.Replace(" ", "");
             flash_data = new byte[0];
 
-            if (hexData.Length != 256 * 2 + 4) return false;
+            if (hexData.Length != 256 * 2 + 4)
+                return false;
 
             string hexPayload = hexData.Substring(0, hexData.Length - 4);
             string checksum = hexData.Substring(hexData.Length - 4);
