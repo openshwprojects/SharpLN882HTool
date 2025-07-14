@@ -43,21 +43,30 @@ namespace LN882HTool
                     toRead = args[i];
                 }
             }
-            LN882HFlasher f = new LN882HFlasher(port, 115200);
-            f.upload_ram_loader("LN882H_RAM_BIN.bin");
-            f.flash_info();
-            f.get_mac_in_otp();
-            f.get_mac_local();
+           // f.get_mac_in_otp();
+           // f.get_mac_local();
             if (toRead.Length>0)
             {
+                LN882HFlasher f = new LN882HFlasher(port, 115200);
+                f.upload_ram_loader("LN882H_RAM_BIN.bin");
+                f.flash_info();
+                Console.WriteLine("Will do dump " + toRead + "...");
                 f.read_flash_to_file(toRead, readLen);
             }
             if(bErase)
             {
+                LN882HFlasher f = new LN882HFlasher(port, 115200);
+                f.upload_ram_loader("LN882H_RAM_BIN.bin");
+                f.flash_info();
+                Console.WriteLine("Will do flash erase all...");
                 f.flash_erase_all();
             }
             if (toWrite.Length > 0)
             {
+                LN882HFlasher f = new LN882HFlasher(port, 115200);
+                f.upload_ram_loader("LN882H_RAM_BIN.bin");
+                f.flash_info();
+                Console.WriteLine("Will do flash " + toWrite + "...");
                 f.flash_program(toWrite);
             }
         }
