@@ -38,7 +38,11 @@ namespace LN882HTool
                 if (args[i] == "-rf" && i + 2 < args.Length)
                 {
                     i++;
-                    readLen = int.Parse(args[i]);
+                    string input = args[i];
+                    if (input.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                        readLen = Convert.ToInt32(input.Substring(2), 16);
+                    else
+                        readLen = int.Parse(input);
                     i++;
                     toRead = args[i];
                 }
