@@ -383,7 +383,7 @@ public class YModem
         ushort crc = 0;
         foreach (byte b in data)
         {
-            Console.WriteLine(" " + b + " crc " + crc);
+           // Console.WriteLine(" " + b + " crc " + crc);
             int i = ((crc >> 8) ^ b) & 0xFF;
             crc = (ushort)((crc << 8) ^ crctable[i]);
         }
