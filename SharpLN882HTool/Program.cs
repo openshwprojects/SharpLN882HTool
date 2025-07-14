@@ -12,20 +12,54 @@ namespace LN882HTool
         static void Main(string[] args)
         {
             string port = "COM3";
+            string toWrite = "";
+            string toRead = "";
+            int readLen = 0;
+            bool bErase = false;
+            // YModem.test();
 
-           // YModem.test();
-
+            // Erase: SharpLN882HTool.exe -p COM3 -ef
+            // Read: SharpLN882HTool.exe -p COM3 -rf 0x200000 dump.bin
+            // Write: SharpLN882HTool.exe -p COM3 -wf obk.bin
             for (int i = 0; i < args.Length; i++)
             {
                 if (args[i] == "-p" && i + 1 < args.Length)
                 {
                     port = args[++i];
                 }
+                if (args[i] == "-wf" && i + 1 < args.Length)
+                {
+                    toWrite = args[++i];
+                }
+                if (args[i] == "-ef")
+                {
+                    bErase = true;
+                }
+                if (args[i] == "-rf" && i + 2 < args.Length)
+                {
+                    i++;
+                    readLen = int.Parse(args[i]);
+                    i++;
+                    toRead = args[i];
+                }
             }
             LN882HFlasher f = new LN882HFlasher(port, 115200);
             f.upload_ram_loader("LN882H_RAM_BIN.bin");
             f.flash_info();
-
+            f.get_mac_in_otp();
+            f.get_mac_local();
+            if (toRead.Length>0)
+            {
+                f.read_flash_to_file(toRead, readLen);
+            }
+            if(bErase)
+            {
+                f.flash_erase_all();
+            }
+            if (toWrite.Length > 0)
+            {
+                f.flash_program(toWrite);
+            }
         }
     }
     public class LN882HFlasher
