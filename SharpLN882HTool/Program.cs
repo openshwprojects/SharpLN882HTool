@@ -182,18 +182,18 @@ namespace LN882HTool
 
         public void change_baudrate(int baudrate)
         {
-            Console.WriteLine("Change baudrate " + baudrate);
+            Console.WriteLine("change_baudrate: Change baudrate " + baudrate);
             _port.Write("baudrate " + baudrate + "\r\n");
             _port.ReadExisting();
             _port.BaudRate = baudrate;
-            Console.WriteLine("Wait 5 seconds for change");
+            Console.WriteLine("change_baudrate: Wait 5 seconds for change");
             Thread.Sleep(5000);
             flush_com();
 
             string msg = "";
             while (!msg.Contains("RAMCODE"))
             {
-                Console.WriteLine("send version... wait for:  RAMCODE");
+                Console.WriteLine("change_baudrate: send version... wait for:  RAMCODE");
                 Thread.Sleep(1000);
                 flush_com();
                 _port.Write("version\r\n");
@@ -207,7 +207,7 @@ namespace LN882HTool
                 catch (TimeoutException) { msg = ""; }
             }
 
-            Console.WriteLine("Baudrate change done");
+            Console.WriteLine("change_baudrate: Baudrate change done");
         }
 
         public void flash_program(string filename)
@@ -283,6 +283,7 @@ namespace LN882HTool
 
             _port.ReadLine(); // echo
             string dataLine = _port.ReadLine().Trim();
+            Console.WriteLine("read_flash[" + flash_addr + "] got " + dataLine);
             string hexData = dataLine.Replace(" ", "");
             flash_data = new byte[0];
 
