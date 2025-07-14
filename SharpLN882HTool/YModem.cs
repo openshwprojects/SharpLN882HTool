@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.IO.Ports;
 using System.Text;
-using System.Threading;
 
 public class YModem
 {
@@ -23,96 +22,139 @@ public class YModem
 
     public int send_file(string filePath, bool packet16k, int retry)
     {
-        using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+        FileStream fileStream = null;
+        try
         {
+            fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
             string fileName = Path.GetFileName(filePath);
-            long fileSize = fs.Length;
-            int packetSize = packet16k ? 4096 * 4 : 1024;
+            long fileSize = fileStream.Length;
 
-            Console.WriteLine("YModem::send_file: waiting for CRC...");
-            wait_for(CRC);
-            Console.WriteLine("YModem::send_file: Got CRC!");
-
-            byte[] header = make_packet_header(0, 128);
-            byte[] data = new byte[128];
-            Encoding.ASCII.GetBytes(fileName).CopyTo(data, 0);
-            byte[] sizeBytes = Encoding.ASCII.GetBytes(fileSize.ToString());
-            sizeBytes.CopyTo(data, fileName.Length + 1);
-            byte[] firstPacket = BuildPacket(header, data, 128);
-            _port.Write(firstPacket, 0, firstPacket.Length);
-
-            Console.WriteLine("YModem::send_file: waiting for ACK...");
-            wait_for(ACK);
-            Console.WriteLine("YModem::send_file: Got ACK!");
-            Console.WriteLine("YModem::send_file: waiting for second CRC...");
-            wait_for(CRC);
-            Console.WriteLine("YModem::send_file: Got second CRC!");
-
-            int seq = 1;
-            byte[] buffer = new byte[packetSize];
-            while (true)
-            {
-                int read = fs.Read(buffer, 0, packetSize);
-                if (read == 0)
-                    break;
-
-                Console.WriteLine("YModem::send_file: sending data ofs " + fs.Position+"!");
-                byte[] actual = new byte[packetSize];
-                Array.Copy(buffer, 0, actual, 0, read);
-                for (int i = read; i < packetSize; i++)
-                    actual[i] = 0x1A;
-
-                header = make_packet_header(seq, packetSize);
-                byte[] packet = BuildPacket(header, actual, packetSize);
-
-                bool acked = false;
-                for (int r = 0; r < retry && !acked; r++)
-                {
-                    _port.Write(packet, 0, packet.Length);
-                    int resp = read_byte_timeout(5000);
-                    if (resp == ACK)
-                        acked = true;
-                }
-
-                if (!acked)
-                {
-                    Console.WriteLine("YModem::send_file: not acked, abort!");
-                    abort();
-                    return -1;
-                }
-
-                seq = (seq + 1) % 0x100;
-            }
-
-            _port.Write(new byte[] { EOT }, 0, 1);
-            wait_for(NAK);
-            _port.Write(new byte[] { EOT }, 0, 1);
-            wait_for(ACK);
-            wait_for(CRC);
-
-            header = make_packet_header(0, 128);
-            data = new byte[128];
-            packetSize = 128;
-            byte[] lastPacket = BuildPacket(header, data, packetSize);
-            _port.Write(lastPacket, 0, lastPacket.Length);
-            wait_for(ACK);
-
-            return (int)fileSize;
+            return send(fileStream, fileName, fileSize, packet16k, retry);
+        }
+        catch (IOException e)
+        {
+            Console.WriteLine("YModem::send_file: error " + e.Message);
+            return -1;
+        }
+        finally
+        {
+            if (fileStream != null)
+                fileStream.Close();
         }
     }
 
-    private void wait_for(byte expected)
+    private int send(FileStream dataStream, string dataName, long dataSize, bool packet16k, int retry)
     {
+        int packetSize = packet16k ? 4096 * 4 : 1024;
+
+        Console.WriteLine("YModem::send: waiting for CRC...");
+        if (wait_for_next(CRC) != 0)
+        {
+            Console.WriteLine("YModem::send: waiting for CRC failed!");
+            return -1;
+        }
+        Console.WriteLine("YModem::send: waiting for CRC ok!");
+
+        if (dataName.Length > 100)
+            dataName = dataName.Substring(0, 100);
+
+        byte[] nameBytes = Encoding.ASCII.GetBytes(dataName + '\0');
+        byte[] sizeBytes = Encoding.ASCII.GetBytes(dataSize.ToString() + '\0');
+        byte[] data = new byte[128];
+        Array.Copy(nameBytes, 0, data, 0, nameBytes.Length);
+        Array.Copy(sizeBytes, 0, data, nameBytes.Length, sizeBytes.Length);
+
+        byte[] header = make_packet_header(0, 128);
+        byte[] packet0 = BuildPacket(header, data, 128);
+        _port.Write(packet0, 0, packet0.Length);
+
+        Console.WriteLine("YModem::send: waiting for ACK...");
+        if (wait_for_next(ACK) != 0)
+        {
+            Console.WriteLine("YModem::send: waiting for ACK failed!");
+            return -1;
+        }
+        Console.WriteLine("YModem::send: waiting for ACK ok!");
+
+
+        Console.WriteLine("YModem::send: waiting for second CRC...");
+        if (wait_for_next(CRC) != 0)
+        {
+            Console.WriteLine("YModem::send: waiting for second CRC failed!");
+            return -1;
+        }
+        Console.WriteLine("YModem::send: waiting for second CRC ok!");
+
+
+
+        int sequence = 1;
+        byte[] buffer = new byte[packetSize];
+
+        while (true)
+        {
+            Console.WriteLine("YModem::send: at " + dataStream.Position + "!");
+            int read = dataStream.Read(buffer, 0, packetSize);
+            if (read == 0)
+                break;
+
+            byte[] actual = new byte[packetSize];
+            Array.Copy(buffer, 0, actual, 0, read);
+            for (int i = read; i < packetSize; i++)
+                actual[i] = 0x1A;
+
+            header = make_packet_header(sequence, packetSize);
+            byte[] dataPacket = BuildPacket(header, actual, packetSize);
+
+            bool acked = false;
+            for (int r = 0; r < retry && !acked; r++)
+            {
+                _port.Write(dataPacket, 0, dataPacket.Length);
+                int resp = read_byte_timeout(5000);
+                if (resp == ACK)
+                    acked = true;
+            }
+
+            if (!acked)
+            {
+                abort();
+                return -2;
+            }
+
+            sequence = (sequence + 1) % 0x100;
+        }
+
+        _port.Write(new byte[] { EOT }, 0, 1);
+        if (wait_for_next(NAK) != 0)
+            return -1;
+        _port.Write(new byte[] { EOT }, 0, 1);
+        if (wait_for_next(ACK) != 0 || wait_for_next(CRC) != 0)
+            return -1;
+
+        byte[] lastHeader = make_packet_header(0, 128);
+        byte[] lastData = new byte[128];
+        byte[] endPacket = BuildPacket(lastHeader, lastData, 128);
+        _port.Write(endPacket, 0, endPacket.Length);
+        if (wait_for_next(ACK) != 0)
+            return -1;
+
+        return (int)dataSize;
+    }
+
+    private int wait_for_next(byte expected)
+    {
+        int cancel_count = 0;
         while (true)
         {
             int b = read_byte_timeout(10000);
-            if (b == expected)
-            {
-                break;
-            }
             if (b == -1)
+                return -1;
+            if (b == expected)
+                return 0;
+            if (b == CAN)
             {
-                throw new IOException("Timeout waiting for " + expected);
+                cancel_count++;
+                if (cancel_count == 2)
+                    return -1;
             }
         }
     }

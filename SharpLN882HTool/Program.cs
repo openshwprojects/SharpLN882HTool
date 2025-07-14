@@ -22,6 +22,8 @@ namespace LN882HTool
             }
             LN882HFlasher f = new LN882HFlasher(port, 115200);
             f.upload_ram_loader("LN882H_RAM_BIN.bin");
+            f.flash_info();
+
         }
     }
     public class LN882HFlasher
@@ -128,6 +130,182 @@ namespace LN882HTool
             _port.DiscardOutBuffer();
         }
 
+        public void close()
+        {
+            _port.Close();
+        }
+
+        public void change_baudrate(int baudrate)
+        {
+            Console.WriteLine("Change baudrate " + baudrate);
+            _port.Write("baudrate " + baudrate + "\r\n");
+            _port.ReadExisting();
+            _port.BaudRate = baudrate;
+            Console.WriteLine("Wait 5 seconds for change");
+            Thread.Sleep(5000);
+            flush_com();
+
+            string msg = "";
+            while (!msg.Contains("RAMCODE"))
+            {
+                Console.WriteLine("send version... wait for:  RAMCODE");
+                Thread.Sleep(1000);
+                flush_com();
+                _port.Write("version\r\n");
+                try
+                {
+                    msg = _port.ReadLine();
+                    Console.WriteLine(msg);
+                    msg = _port.ReadLine();
+                    Console.WriteLine(msg);
+                }
+                catch (TimeoutException) { msg = ""; }
+            }
+
+            Console.WriteLine("Baudrate change done");
+        }
+
+        public void flash_program(string filename)
+        {
+            change_baudrate(921600);
+            _port.Write("startaddr 0x0\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+
+            _port.Write("upgrade\r\n");
+            _port.Read(new byte[7], 0, 7);
+
+            YModem modem = new YModem(_port);
+            modem.send_file(filename, true, 3);
+
+            _port.Write("filecount\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+
+            change_baudrate(115200);
+        }
+
+        public void flash_erase_all()
+        {
+            _port.Write("ferase_all\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+        }
+
+        public void flash_info()
+        {
+            _port.Write("flash_info\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+        }
+
+        public void get_mac_in_otp()
+        {
+            _port.Write("get_mac_in_flash_otp\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+        }
+
+        public void get_mac_local()
+        {
+            _port.Write("get_m_local_mac\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+        }
+
+        public void read_gpio(string pin)
+        {
+            _port.Write("gpio_read " + pin + "\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+        }
+
+        public void write_gpio(string pin, string val)
+        {
+            _port.Write("gpio_write " + pin + " " + val + "\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+        }
+
+        public bool read_flash(int flash_addr, bool is_otp, out byte[] flash_data)
+        {
+            string cmd = is_otp ? $"flash_otp_read 0x{flash_addr:X} 0x100\r\n" : $"flash_read 0x{flash_addr:X} 0x100\r\n";
+            _port.Write(cmd);
+
+            _port.ReadLine(); // echo
+            string dataLine = _port.ReadLine().Trim();
+            string hexData = dataLine.Replace(" ", "");
+            flash_data = new byte[0];
+
+            if (hexData.Length != 256 * 2 + 4) return false;
+
+            string hexPayload = hexData.Substring(0, hexData.Length - 4);
+            string checksum = hexData.Substring(hexData.Length - 4);
+            flash_data = HexStringToBytes(hexPayload);
+
+            ushort calc_crc = YModem.calc_crc(flash_data);
+            return calc_crc == Convert.ToUInt16(checksum, 16);
+        }
+
+        public void read_flash_to_file(string filename, int flash_size, bool is_otp = false)
+        {
+            Console.WriteLine("Reading flash to file " + filename);
+            int addr = 0;
+            using (FileStream fs = new FileStream(filename, FileMode.Create))
+            {
+                while (addr < flash_size)
+                {
+                    if (read_flash(addr, is_otp, out byte[] data))
+                    {
+                        fs.Write(data, 0, data.Length);
+                    }
+                    Console.Write(".");
+                    addr += 0x100;
+                }
+            }
+            Console.WriteLine("\ndone");
+        }
+
+        public void dump_flash()
+        {
+            _port.Write("fdump 0x0 0x2000\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            while (true)
+            {
+                string msg = _port.ReadLine().Trim();
+                if (msg == "pppp") break;
+                Console.WriteLine(msg);
+            }
+        }
+
+        public void get_gpio_all()
+        {
+            _port.Write("gpio_read_al\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+        }
+
+        public void get_otp_lock()
+        {
+            _port.Write("flash_otp_get_lock_state\r\n");
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+            Console.WriteLine(_port.ReadLine().Trim());
+        }
+
+        private byte[] HexStringToBytes(string hex)
+        {
+            int len = hex.Length;
+            byte[] bytes = new byte[len / 2];
+            for (int i = 0; i < len; i += 2)
+                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
+            return bytes;
+        }
 
     }
 }
