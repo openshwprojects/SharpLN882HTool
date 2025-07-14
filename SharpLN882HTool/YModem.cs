@@ -116,19 +116,32 @@ public class YModem
 
             if (!acked)
             {
+                Console.WriteLine("YModem::send: ERROR not acked at " + dataStream.Position + "!");
                 abort();
                 return -2;
             }
 
             sequence = (sequence + 1) % 0x100;
         }
+        Console.WriteLine("YModem::send: done sending stream!");
 
         _port.Write(new byte[] { EOT }, 0, 1);
         if (wait_for_next(NAK) != 0)
+        {
+
             return -1;
+        }
         _port.Write(new byte[] { EOT }, 0, 1);
-        if (wait_for_next(ACK) != 0 || wait_for_next(CRC) != 0)
+        if (wait_for_next(ACK) != 0)
+        {
+
             return -1;
+        }
+        if (wait_for_next(CRC) != 0)
+        {
+
+            return -1;
+        }
 
         byte[] lastHeader = make_packet_header(0, 128);
         byte[] lastData = new byte[128];
