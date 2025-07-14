@@ -47,16 +47,87 @@ namespace LN882HTool
                 Environment.Exit(-1);
             }
         }
-        public bool upload_ram_loader(string fname) {
+        public bool upload_ram_loader(string fname)
+        {
             Console.WriteLine("upload_ram_loader will upload " + fname + "!");
             if (File.Exists(fname) == false)
             {
-                Console.WriteLine("Can't open " + fname+"!");
+                Console.WriteLine("Can't open " + fname + "!");
                 return true;
             }
 
-            return false;
+            Console.WriteLine("Sync with LN882H... wait 5 seconds");
+            _port.DiscardInBuffer();
+            Thread.Sleep(5000);
+
+            string msg = "";
+            while (msg != "Mar 14 2021/00:23:32\r")
+            {
+                Thread.Sleep(2000);
+                flush_com();
+                Console.WriteLine("send version... wait for:  Mar 14 2021/00:23:32");
+                _port.Write("version\r\n");
+                try
+                {
+                    msg = _port.ReadLine();
+                    Console.WriteLine(msg);
+                }
+                catch (TimeoutException)
+                {
+                    msg = "";
+                }
+            }
+
+            Console.WriteLine("Connect to bootloader...");
+            _port.Write("download [rambin] [0x20000000] [37872]\r\n");
+            Console.WriteLine("Will send file via YModem");
+
+            YModem modem = new YModem(_port);
+            modem.send_file(fname, false, 3);
+
+            Console.WriteLine("Start program. Wait 5 seconds");
+            Thread.Sleep(5000);
+
+            msg = "";
+            while (msg != "RAMCODE\r")
+            {
+                Thread.Sleep(5000);
+                _port.DiscardInBuffer();
+                Console.WriteLine("send version... wait for:  RAMCODE");
+                _port.Write("version\r\n");
+                try
+                {
+                    msg = _port.ReadLine();
+                    Console.WriteLine(msg);
+                    msg = _port.ReadLine();
+                    Console.WriteLine(msg);
+                }
+                catch (TimeoutException)
+                {
+                    msg = "";
+                }
+            }
+
+            _port.Write("flash_uid\r\n");
+            try
+            {
+                msg = _port.ReadLine();
+                msg = _port.ReadLine();
+                Console.WriteLine(msg.Trim());
+            }
+            catch (TimeoutException)
+            {
+                Console.WriteLine("Timeout on flash_uid");
+            }
+
+            return true;
         }
+        public void flush_com()
+        {
+            _port.DiscardInBuffer();
+            _port.DiscardOutBuffer();
+        }
+
 
     }
 }

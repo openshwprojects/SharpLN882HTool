@@ -1,0 +1,103 @@
+name: Build and Release SharpLN882HTool
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write  # <<< this is required to allow release creation
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v1
+
+      - name: Install NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore SharpLN882HTool/SharpLN882HTool.csproj -SolutionDirectory .
+
+      - name: Create Output Directory
+        run: mkdir -p BuildOutput/Release
+
+      - name: Build the project
+        run: msbuild SharpLN882HTool/SharpLN882HTool.csproj /p:Configuration=Release /p:OutDir=BuildOutput\Release\
+        
+      - name: Copy sample files next to .exe
+        run: |
+          xcopy samples\*.* SharpLN882HTool\BuildOutput\Release\ /S /Y
+
+      - name: Debug Build Output
+        run: |
+          echo "Checking output directory..."
+          dir BuildOutput
+          dir BuildOutput\Release
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SharpLN882HTool
+          path: SharpLN882HTool/BuildOutput/Release/**
+          if-no-files-found: warn
+
+      - name: Debug Build Output Directory
+        run: |
+          echo "Contents of BuildOutput/Release:"
+          dir SharpLN882HTool/BuildOutput/Release
+
+  release:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: SharpLN882HTool
+
+      - name: Recreate Directory Structure
+        run: |
+          echo "Recreating BuildOutput directory..."
+          mkdir -p BuildOutput/Release
+          move *.exe BuildOutput/Release/
+          move *.dll BuildOutput/Release/
+          move *.bin BuildOutput/Release/
+          move *.cmd BuildOutput/Release/
+          move *.bat BuildOutput/Release/
+
+      - name: Debug Downloaded Artifacts
+        run: |
+          echo "Downloaded artifacts in BuildOutput/Release:"
+          dir BuildOutput/Release
+
+      - name: Create ZIP File
+        run: |
+          mkdir release
+          powershell Compress-Archive -Path "BuildOutput/Release/*" -DestinationPath "release/SharpLN882HTool-v${{ github.run_number }}.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: SharpLN882HTool v${{ github.run_number }}
+          body: |
+            Automated release for SharpLN882HTool.
+            Includes the latest .exe and .dll files.
+          draft: false
+          prerelease: false
+          files: release/SharpLN882HTool-v${{ github.run_number }}.zip
