@@ -13,6 +13,8 @@ namespace LN882HTool
         {
             string port = "COM3";
 
+           // YModem.test();
+
             for (int i = 0; i < args.Length; i++)
             {
                 if (args[i] == "-p" && i + 1 < args.Length)
