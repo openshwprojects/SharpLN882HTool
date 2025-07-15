@@ -47,6 +47,15 @@ namespace LN882HTool
                     toRead = args[i];
                 }
             }
+            if(true)
+            {
+
+            }
+            if (true)
+            {
+                toRead = "t.bin";
+                readLen = 0x200000;
+            }
            // f.get_mac_in_otp();
            // f.get_mac_local();
             if (toRead.Length>0)
@@ -82,7 +91,7 @@ namespace LN882HTool
     {
         private SerialPort _port;
 
-        public LN882HFlasher(string portName, int baudRate, int timeoutMs = 1000)
+        public LN882HFlasher(string portName, int baudRate, int timeoutMs = 10000)
         {
             try
             {
@@ -287,16 +296,39 @@ namespace LN882HTool
             Console.WriteLine(_port.ReadLine().Trim());
             Console.WriteLine(_port.ReadLine().Trim());
         }
+        string readBytesSafe(int targetLen)
+        {
+            string s = "";
+            for(int tr = 0; tr < 100; tr++)
+            {
+                while (_port.BytesToRead > 0)
+                {
+                    char c = (char)_port.ReadChar();
+                    if(c != ' ')
+                    {
+                        s += c;
+                        if(s.Length == targetLen)
+                        {
+                            return s.Trim();
+                        }
+                    }
+                }
+                Thread.Sleep(1);
+            }
+            Console.WriteLine("readBytesSafe Failed");
+            return s.Trim();
+        }
 
         public bool read_flash(int flash_addr, bool is_otp, out byte[] flash_data)
         {
-            Console.WriteLine("read_flash[" + flash_addr + "] entered");
+            //Console.WriteLine("read_flash[" + flash_addr + "] entered");
             string cmd = is_otp ? $"flash_otp_read 0x{flash_addr:X} 0x100\r\n" : $"flash_read 0x{flash_addr:X} 0x100\r\n";
             _port.Write(cmd);
 
-            _port.ReadLine(); // echo
-            string dataLine = _port.ReadLine().Trim();
-            Console.WriteLine("read_flash[" + flash_addr + "] got " + dataLine);
+            string rep =  _port.ReadLine(); // echo
+            // string dataLine = _port.ReadLine().Trim();
+            string dataLine = readBytesSafe(256 * 2 + 4);
+           // Console.WriteLine("read_flash[" + flash_addr + "] got " + dataLine);
             string hexData = dataLine.Replace(" ", "");
             flash_data = new byte[0];
 
@@ -313,7 +345,7 @@ namespace LN882HTool
 
         public void read_flash_to_file(string filename, int flash_size, bool is_otp = false)
         {
-            Console.WriteLine("Reading flash to file " + filename);
+            Console.WriteLine("Reading flash to file " + filename + ", given size " + flash_size);
             int addr = 0;
             using (FileStream fs = new FileStream(filename, FileMode.Create))
             {
