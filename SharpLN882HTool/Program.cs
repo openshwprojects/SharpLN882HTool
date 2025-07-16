@@ -15,6 +15,7 @@ namespace LN882HTool
             string toWrite = "";
             string toRead = "";
             bool bErase = false;
+            bool bInfo = false;
             bool bTerminal = false;
             int baud = 460800;
             // YModem.test();
@@ -39,8 +40,12 @@ namespace LN882HTool
                 if (args[i] == "-t")
                 {
                     bTerminal = true;
-				}
-				if (args[i] == "-rf" && i + 2 < args.Length)
+                }
+                if (args[i] == "-i")
+                {
+                    bInfo = true;
+                }
+                if (args[i] == "-rf" && i + 2 < args.Length)
                 {
                     i++;
                     string input = args[i];
@@ -49,12 +54,15 @@ namespace LN882HTool
                     toRead = args[i];
                 }
             }
-            if(true)
+            if (bInfo)
             {
-                bTerminal = true;
+                LN882HFlasher f = new LN882HFlasher(port, 115200);
+                f.upload_ram_loader("LN882H_RAM_BIN.bin");
+                f.flash_info();
+                f.get_mac_in_otp();
+                f.get_mac_local();
+                Console.WriteLine("Info done!");
             }
-           // f.get_mac_in_otp();
-           // f.get_mac_local();
             if (toRead.Length>0)
             {
                 LN882HFlasher f = new LN882HFlasher(port, 115200);

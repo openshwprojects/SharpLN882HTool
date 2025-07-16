@@ -34,7 +34,7 @@ namespace LN882HTool
 			}
 		}
 
-		public bool upload_ram_loader_for_read()
+		public bool upload_ram_loader_for_read(byte[] RAMCODE)
 		{
 			Console.WriteLine("Sync with LN882H");
 			_port.DiscardInBuffer();
@@ -417,7 +417,7 @@ namespace LN882HTool
 					RAMCODE[8227] = 0x20;
 					break;
 			}
-			var isUploaded = upload_ram_loader_for_read();
+			var isUploaded = upload_ram_loader_for_read(RAMCODE);
 			if(!isUploaded) return false;
 			_port.BaudRate = baudRate;
 			byte[] flashsize = new byte[4];
