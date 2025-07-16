@@ -68,7 +68,7 @@ public class YModem
         return 0;
     }
 
-    public int send(FileStream data_stream, string data_name, long data_size, bool packet_size_16k = true, int retry = 20, object callback = null)
+    public int send(Stream data_stream, string data_name, long data_size, bool packet_size_16k = true, int retry = 20, object callback = null)
     {
         int packet_size = packet_size_16k ? 4096 * 4 : 1024;
 
