@@ -85,7 +85,6 @@ namespace LN882HTool
                 LN882HFlasher f = new LN882HFlasher(port, 115200);
                 f.upload_ram_loader("LN882H_RAM_BIN.bin");
                 f.runTerminal();
-
             }
         }
     }
