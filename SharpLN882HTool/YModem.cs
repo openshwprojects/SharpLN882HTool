@@ -97,7 +97,7 @@ public class YModem
             packet0[i] = header_pad;
 
         byte[] data_for_send = BuildPacket(header, packet0);
-        Console.WriteLine("YModem::send: first packet " + BitConverter.ToString(data_for_send).Replace("-", " "));
+      //  Console.WriteLine("YModem::send: first packet " + BitConverter.ToString(data_for_send).Replace("-", " "));
         port.Write(data_for_send, 0, data_for_send.Length);
 
         Console.WriteLine("YModem::send: v2 will wait for ACK...");

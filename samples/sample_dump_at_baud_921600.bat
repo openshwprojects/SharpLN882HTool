@@ -1,0 +1,1 @@
+SharpLN882HTool.exe -p COM3 -rf 921600 dump.bin
