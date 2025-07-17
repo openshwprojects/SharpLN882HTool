@@ -21,7 +21,7 @@ namespace LN882HTool
             // YModem.test();
 
             // Erase: SharpLN882HTool.exe -p COM3 -ef
-            // Read: SharpLN882HTool.exe -p COM3 -rf 0x200000 dump.bin
+            // Read: SharpLN882HTool.exe -p COM3 -rf 460800 dump.bin
             // Write: SharpLN882HTool.exe -p COM3 -wf obk.bin
             for (int i = 0; i < args.Length; i++)
             {

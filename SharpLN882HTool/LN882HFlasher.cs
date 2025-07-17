@@ -64,9 +64,13 @@ namespace LN882HTool
 
 			var stream = new MemoryStream(RAMCODE);
 			int ret = modem.send(stream, "RAMCODE", stream.Length, false);
-
+            if(ret != stream.Length)
+            {
+                Console.WriteLine("Ramcode upload failed, expected " + stream.Length +", got " + ret+"!");
+                return false;
+            }
 			Console.WriteLine("Starting immediately");
-			return ret > 0;
+			return true;
 		}
 
 		public bool upload_ram_loader(string fname)
@@ -418,7 +422,11 @@ namespace LN882HTool
 					break;
 			}
 			var isUploaded = upload_ram_loader_for_read(RAMCODE);
-			if(!isUploaded) return false;
+            if (!isUploaded)
+            {
+                Console.WriteLine("read_flash_to_file: failed to upload RAMCODE");
+                return false;
+            }
 			_port.BaudRate = baudRate;
 			byte[] flashsize = new byte[4];
 			var addr = 0;

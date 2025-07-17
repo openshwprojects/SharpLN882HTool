@@ -1,1 +1,1 @@
-SharpLN882HTool.exe -p COM3 -rf 0x200000 dump.bin
+SharpLN882HTool.exe -p COM3 -rf 460800 dump.bin
